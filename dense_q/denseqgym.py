@@ -42,7 +42,7 @@ class DenseGym(object):
             update_interval,
             epsilon_duration):
 
-        tf.logging.info('Starting the loop...')
+        tf.logging.info(' Starting the loop...')
         tf.logging.info('   n_runs:    %d' % n_runs)
         tf.logging.info('   max_steps: %d' % max_steps)
         tf.logging.info('   e-decay:   %d' % epsilon_duration)
@@ -86,17 +86,23 @@ class DenseGym(object):
 
                     state = state_next
 
-                    # Train the main network
                     if len(buffer) > batch_size:
                         samples = buffer.sample(batch_size)
 
                         targets = samples[:, 2]
 
-                        feed_dict = {self.target_net.inputs: np.vstack(samples[:, 4])}
-                        targets[:] += \
-                            (1 - samples[:, 3]) * np.max(
-                                sess.run(self.target_net.q_values, feed_dict), axis=1) * gamma
+                        # Double DQN (https://arxiv.org/pdf/1509.06461.pdf)
+                        # To compute the target Q values
+                        feed_dict = {self.main_net.inputs: np.vstack(samples[:, 4])}
+                        actions_state_next = sess.run(self.main_net.pred_actions, feed_dict)
 
+                        feed_dict = {self.target_net.inputs: np.vstack(samples[:, 4])}
+                        target_q_values = sess.run(self.target_net.q_values, feed_dict)
+                        targets[:] += \
+                            (1 - samples[:, 3]) * target_q_values[
+                                range(target_q_values.shape[0]), actions_state_next] * gamma
+
+                        # Train the main network
                         feed_dict = {self.main_net.inputs: np.vstack(samples[:, 0]),
                                      self.main_net.actions: samples[:, 1],
                                      self.main_net.q_targets: targets}
@@ -111,9 +117,10 @@ class DenseGym(object):
                         break
 
                 if run % int(n_runs / 100) == 0:
-                    tf.logging.debug('Run %d / %d, reward: %f, loss: %f' % (run + 1, n_runs,
-                                                                            cumulative_reward,
-                                                                            cumulative_loss))
+                    tf.logging.debug(' Run %d / %d, reward: %f, loss: %f, epsilon %f' % (run + 1, n_runs,
+                                                                                         cumulative_reward,
+                                                                                         cumulative_loss,
+                                                                                         e))
 
 
 if __name__ == '__main__':
@@ -122,9 +129,9 @@ if __name__ == '__main__':
     DenseGym(env_id='CartPole-v1') \
         .run(n_runs=10000,
              max_steps=1000,
-             learning_rate=0.001,
+             learning_rate=0.0003,
              epsilon_duration=20000,
-             buffer_size=1000000,
+             buffer_size=100000,
              batch_size=50,
              update_interval=20,
              gamma=0.95)
