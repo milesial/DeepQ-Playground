@@ -15,7 +15,7 @@ class DenseQNet(object):
                  activation,
                  state_shape,
                  is_main=False,
-                 name='DeepQNet'):
+                 name='DenseQNet'):
 
         super(DenseQNet, self).__init__()
         self.n_actions = n_actions
@@ -31,7 +31,7 @@ class DenseQNet(object):
         with tf.variable_scope(name):
             with tf.variable_scope('placeholders'):
                 self.inputs = tf.placeholder(dtype=tf.float32,
-                                             shape=[None] + state_shape,
+                                             shape=[None] + list(state_shape),
                                              name='input_state')
 
                 if is_main:
@@ -89,7 +89,7 @@ class DenseQNet(object):
 
         return [mine.assign(target) for target, mine in zip(target_weights, network_weights)]
 
-    def make_child(self):
+    def make_child(self, name):
         self.n_childs += 1
         return DenseQNet(n_actions=self.n_actions,
                          n_hidden_layers=self.n_hidden_layers,
@@ -97,7 +97,7 @@ class DenseQNet(object):
                          activation=self.activation,
                          state_shape=self.state_shape,
                          is_main=False,
-                         name=self.name + '_Child%d' % self.n_childs)
+                         name=name)
 
 
 if __name__ == '__main__':

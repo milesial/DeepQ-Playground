@@ -28,8 +28,7 @@ class ExperienceBuffer(object):
         length = len(self.buffer)
         if size > length:
             size = length
-
-        return np.reshape(np.array(random.sample(self.buffer, size)), [size, len(self.buffer[0])])
+        return np.array(random.sample(self.buffer, size))
 
     def clear(self):
         self.buffer.clear()
